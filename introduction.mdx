@@ -1,0 +1,71 @@
+---
+title: "nvim-various-textobjs: Text Objects for Neovim"
+sidebarTitle: "Introduction"
+description: "nvim-various-textobjs adds 30+ text objects to Neovim — indentation, subwords, brackets, URLs, diagnostics, and more — with forward-seeking and inner/outer variants."
+---
+
+`nvim-various-textobjs` is a Neovim plugin that bundles more than 30 new text objects into a single, lightweight package. Vanilla Neovim ships with a handful of built-in text objects — words, sentences, paragraphs, brackets, quotes — but anything beyond that requires either manual keymaps or additional plugins. `nvim-various-textobjs` fills that gap with a curated set of objects covering everyday editing needs: indentation levels, camelCase/snake_case subwords, key-value pairs, URLs, file paths, numbers, colors, diagnostic messages, chain members, notebook cells, emojis, and more.
+
+## Forward-Seeking Behavior
+
+Most text objects in Neovim require your cursor to already be sitting on or inside the object you want to act on. `nvim-various-textobjs` lifts that restriction through **forward-seeking**: when you invoke a text object, the plugin scans ahead from the cursor position by a configurable number of lines, selects the first match it finds, and applies the operation — all in one keystroke.
+
+For example, `cL` (change URL) does not require your cursor to be on the URL. If a URL appears anywhere within the next 15 lines, the plugin seeks it out and selects it. This makes operations like `c.` (change emoji) or `cL` (change URL) genuinely one-shot: navigate once, act once.
+
+Two seek distances are configurable — `small` (default: 5 lines) and `big` (default: 15 lines) — and each text object is assigned the distance that suits its typical usage. See the [Configuration](/configuration) page for details.
+
+## Inner and Outer Variants
+
+Many text objects come in two flavors, following Neovim's `i`/`a` convention:
+
+- **inner** — selects the core content, excluding surrounding delimiters, whitespace, or punctuation.
+- **outer** — selects the full extent, including delimiters. For example, outer `subword` includes a trailing `_` or `-`; outer `value` includes a trailing `,` or `;`.
+
+Text objects that have no meaningful delimiter distinction (such as `url`, `diagnostic`, or `restOfParagraph`) expose only a single keymap.
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Add the plugin with lazy.nvim or packer, with or without default keymaps.
+  </Card>
+  <Card title="Configuration" icon="sliders" href="/configuration">
+    Full reference for all setup options, forward-looking distances, and per-object settings.
+  </Card>
+  <Card title="Text Object Reference" icon="list" href="/reference/all-textobjects">
+    Complete table of all 30+ text objects with keymaps, inner/outer support, and forward-seeking details.
+  </Card>
+  <Card title="Advanced API" icon="code" href="/advanced/api">
+    Use text objects programmatically: smarter `gx`, delete surrounding indentation, dynamic config switching, and more.
+  </Card>
+</CardGroup>
+
+## How It Works
+
+Every text object in `nvim-various-textobjs` is a regular Lua function exposed on the `require("various-textobjs")` module. The functions are designed to be invoked as **Ex commands** (`<cmd>lua ...<CR>`) rather than as inline Lua callbacks. This is required for **dot-repeat** (`.`) to work correctly — Neovim's repeat mechanism captures the Ex command string, so using `function() ... end` as a keymap RHS would break repeatability.
+
+```lua
+-- ✅ Correct — dot-repeatable
+vim.keymap.set({ "o", "x" }, "U", '<cmd>lua require("various-textobjs").url()<CR>')
+
+-- ❌ Not dot-repeatable
+vim.keymap.set({ "o", "x" }, "U", function() require("various-textobjs").url() end)
+```
+
+Text objects are active in two modes:
+
+- **Operator-pending mode (`o`)** — used after an operator like `d`, `c`, `y`, `=`, `<`, `>`. For example, `diS` deletes the inner subword under or ahead of the cursor.
+- **Visual mode (`x`)** — extends or sets the visual selection to cover the text object.
+
+When called from **normal mode** (outside an operator or visual selection), characterwise text objects switch the editor into visual mode with the object selected, which is useful for building custom motions — see the [Advanced API](/advanced/api) page.
+
+## Related Plugins
+
+`nvim-various-textobjs` is designed to complement, not replace, the existing ecosystem of text object plugins. Each tool has a distinct focus:
+
+- [**nvim-treesitter-textobjects**](https://github.com/nvim-treesitter/nvim-treesitter-textobjects) — Treesitter-powered objects scoped to syntactic constructs: functions, classes, loops, parameters, and more. It is more accurate than pattern matching for language-aware selections, and `nvim-various-textobjs` intentionally avoids duplicating what it already covers well.
+- [**mini.ai**](https://github.com/echasnovski/mini.nvim/blob/main/readmes/mini-ai.md) — Extends `a`/`i` text objects with a highly customisable framework, including a search algorithm for surrounding pairs. Works well alongside `nvim-various-textobjs` as the two rarely conflict in their default keymaps.
+
+All three plugins can be installed simultaneously and their keymaps adjusted to avoid conflicts.
+
+<Note>
+  `nvim-various-textobjs` uses Lua pattern matching rather than Treesitter queries. This makes it fast, dependency-free, and filetype-agnostic — but it comes with trade-offs. Pattern matching cannot understand nested structures or language grammar, so complex or multi-line constructs (such as multi-line value assignments) may not be selected correctly. For syntax-aware selections, prefer `nvim-treesitter-textobjects` where it provides coverage.
+</Note>

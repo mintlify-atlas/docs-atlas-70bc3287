@@ -1,0 +1,37 @@
+---
+title: "Limitations and Non-Goals of nvim-various-textobjs"
+sidebarTitle: "Limitations"
+description: "Known limitations of nvim-various-textobjs: pattern matching edge cases, multiline objects, count support, and relationship to nvim-treesitter-textobjects."
+---
+
+`nvim-various-textobjs` uses Lua pattern matching rather than Treesitter, which keeps it lightweight and entirely filetype-agnostic — it works in plain text, config files, and any language without a Treesitter grammar. That design choice, however, comes with a set of known constraints that are worth understanding before relying on the plugin in complex workflows.
+
+## Known Limitations
+
+- **Pattern matching accuracy**: All text objects are implemented with Lua patterns. These patterns work well for the common case but can produce incorrect or unexpected selections in edge cases — for example, the `value` text object may misidentify the boundary of a value inside a complex nested expression, and the `argument` text object does not handle arguments that contain `()` accurately.
+
+- **No multiline characterwise objects**: Most characterwise text objects (`value`, `key`, `anyQuote`, `anyBracket`, `color`, `number`, and others) match only within a single line. The two exceptions are `toNextClosingBracket` and `toNextQuotationMark`, which can span multiple lines, but they select only in one direction — from the cursor forward to the target — and do not wrap a balanced pair.
+
+- **Count support**: Vim counts (e.g., `2iv` to select the second value on a line) are not supported for most text objects. The two exceptions are `nearEoL`, where `{count}` controls how many characters are excluded from the end of the line, and `column`, where `{count}` selects multiple columns at once.
+
+- **Paste manipulation plugins**: The `lastChange` text object relies on the `[` and `]` marks set by Neovim after a change, yank, or paste. Plugins that intercept or transform paste operations may update those marks in unexpected ways, causing `lastChange` to select the wrong region.
+
+## Non-Goals
+
+- **Duplicating Treesitter objects**: [nvim-treesitter-textobjects](https://github.com/nvim-treesitter/nvim-treesitter-textobjects) provides highly accurate function, class, loop, and conditional text objects that are built from the language's AST. This plugin does not aim to replace those. The two plugins are designed to be used together, each covering what the other cannot.
+
+- **Motions**: The primary design target is text objects for use with operators (`d`, `c`, `y`, etc.) and visual mode. Using a characterwise text object as a motion by entering visual mode and then immediately leaving it works in some cases but is not the primary use case. For dedicated subword motions, consider [nvim-spider](https://github.com/chrisgrieser/nvim-spider).
+
+## When to Prefer nvim-treesitter-textobjects
+
+The `argument`, `key`, and `value` text objects in this plugin overlap with equivalents offered by `nvim-treesitter-textobjects`. The Treesitter versions are more accurate because they operate on the language's abstract syntax tree rather than on text patterns. However, `nvim-treesitter-textobjects` requires a Treesitter grammar for each language, and not every language has full coverage. The pattern-based versions in this plugin serve as a reliable fallback for those languages.
+
+<Accordion title="Why use this plugin alongside nvim-treesitter-textobjects?">
+The two plugins cover different things:
+
+- `nvim-treesitter-textobjects` gives AST-accurate objects for functions, classes, loops, conditionals, and more. These are language-aware and highly precise, but they require a Treesitter grammar to be installed and maintained for each language you work with.
+
+- `nvim-various-textobjs` gives pattern-based objects for structural patterns that are not language-specific: indentation levels, URL links, color values, emoji, column blocks, notebook cells, file paths, chain members, and more. Because these do not depend on a grammar, they work identically in any file type — including plain text, Markdown, TOML, YAML, log files, and languages where no grammar yet exists.
+
+Using both together gives you the best of both worlds: AST precision where a grammar is available, and broad coverage everywhere else.
+</Accordion>

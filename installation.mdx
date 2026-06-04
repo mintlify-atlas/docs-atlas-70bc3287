@@ -1,0 +1,94 @@
+---
+title: "Install nvim-various-textobjs in Neovim"
+sidebarTitle: "Installation"
+description: "Install nvim-various-textobjs with lazy.nvim or packer in two variants: use built-in default keymaps, or define your own bindings from scratch."
+---
+
+`nvim-various-textobjs` has no external dependencies — it requires only Neovim and no additional tools, language servers, or Treesitter parsers. There are two installation variants: **Variant 1** lets the plugin register all of its built-in default keymaps for you automatically; **Variant 2** gives you full control by letting you wire up only the text objects you want, using the keymap style of your choice.
+
+## Variant 1 — Use Default Keymaps
+
+<Steps>
+  <Step title="Add the plugin to your plugin manager">
+    Install `nvim-various-textobjs` and enable `keymaps.useDefaults` in the `opts` (or `config`) table. This registers all built-in keymaps from the text object reference table automatically on startup.
+
+    <CodeGroup>
+      ```lua lazy.nvim
+      {
+        "chrisgrieser/nvim-various-textobjs",
+        event = "VeryLazy",
+        opts = {
+          keymaps = {
+            useDefaults = true
+          },
+        },
+      },
+      ```
+
+      ```lua packer
+      use {
+        "chrisgrieser/nvim-various-textobjs",
+        config = function()
+          require("various-textobjs").setup({
+            keymaps = {
+              useDefaults = true
+            },
+          })
+        end,
+      }
+      ```
+    </CodeGroup>
+  </Step>
+  <Step title="Verify the keymaps are active">
+    Open Neovim and run `:map iS` — you should see the inner subword text object keymap listed. If nothing appears, check that the plugin loaded correctly (e.g. run `:Lazy` and confirm `nvim-various-textobjs` is installed and not in an error state).
+  </Step>
+</Steps>
+
+<Warning>
+  If you lazy-load the plugin using `keys = { ... }` (key-event lazy loading), the plugin is not loaded until one of those keys is pressed — which means `useDefaults = true` cannot register the full keymap table at startup. In that scenario, either switch to `event = "VeryLazy"` as shown above, or set `lazy = false` explicitly to force eager loading.
+</Warning>
+
+<Tip>
+  You can also use `keymaps.disabledDefaults` to disable only specific default keymaps while keeping the rest. For example, `disabledDefaults = { "ai", "!" }` removes the `ai` indentation and `!` diagnostic keymaps while leaving everything else untouched. See the [Configuration](/configuration) page for the full option reference.
+</Tip>
+
+---
+
+## Variant 2 — Define Your Own Keymaps
+
+<Steps>
+  <Step title="Add the plugin with a keys table">
+    Use the `keys` field in lazy.nvim (or call `vim.keymap.set` manually in packer/your config) to bind only the text objects you want. Each text object is called as an Ex command for dot-repeat compatibility.
+
+    ```lua lazy.nvim
+    {
+      "chrisgrieser/nvim-various-textobjs",
+      keys = {
+        -- define your keymaps here, e.g.:
+        { "iS", '<cmd>lua require("various-textobjs").subword("inner")<CR>', mode = { "o", "x" } },
+        { "aS", '<cmd>lua require("various-textobjs").subword("outer")<CR>', mode = { "o", "x" } },
+      },
+    },
+    ```
+  </Step>
+  <Step title="Add keymaps for every text object you need">
+    Each text object function accepts `"inner"` or `"outer"` as its argument (where applicable). Text objects without an inner/outer distinction are called with no arguments. Bind them in both operator-pending mode (`o`) and visual mode (`x`) so they work after operators and inside visual selections.
+
+    ```lua
+    -- text object with inner/outer
+    vim.keymap.set({ "o", "x" }, "iv", '<cmd>lua require("various-textobjs").value("inner")<CR>')
+    vim.keymap.set({ "o", "x" }, "av", '<cmd>lua require("various-textobjs").value("outer")<CR>')
+
+    -- text object without inner/outer
+    vim.keymap.set({ "o", "x" }, "L", '<cmd>lua require("various-textobjs").url()<CR>')
+
+    -- indentation takes two parameters (start border, end border)
+    vim.keymap.set({ "o", "x" }, "ii", '<cmd>lua require("various-textobjs").indentation("inner", "inner")<CR>')
+    vim.keymap.set({ "o", "x" }, "ai", '<cmd>lua require("various-textobjs").indentation("outer", "inner")<CR>')
+    vim.keymap.set({ "o", "x" }, "aI", '<cmd>lua require("various-textobjs").indentation("outer", "outer")<CR>')
+    ```
+  </Step>
+  <Step title="Consult the Configuration page for further options">
+    Even when managing your own keymaps, you can still call `setup()` to adjust forward-looking distances, notification behavior, and per-object settings. See the [Configuration](/configuration) page for all available options.
+  </Step>
+</Steps>

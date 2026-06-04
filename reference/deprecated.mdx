@@ -1,0 +1,105 @@
+---
+title: "Deprecated Text Objects in nvim-various-textobjs"
+sidebarTitle: "Deprecated"
+description: "Filetype-specific text objects deprecated in nvim-various-textobjs and how to migrate to nvim-treesitter-textobjects equivalents."
+---
+
+The following filetype-specific text objects have been deprecated in `nvim-various-textobjs` in favour of Treesitter-based equivalents provided by [nvim-treesitter-textobjects](https://github.com/nvim-treesitter/nvim-treesitter-textobjects). The Treesitter approach is both more precise — because it operates on the language's AST rather than text patterns — and more composable with the rest of the Treesitter ecosystem. Creating a custom query file is a one-time, low-effort migration.
+
+<Note>
+  Calling any deprecated function still works but will display a deprecation warning in Neovim with the full migration instructions. The functions will be removed in a future release. The deprecation date is **2025-11-30**.
+</Note>
+
+## `mdFencedCodeBlock`
+
+Create the file `~/.config/nvim/queries/markdown/textobjects.scm`:
+
+```scheme
+; extends
+(fenced_code_block) @codeblock.outer
+(code_fence_content) @codeblock.inner
+```
+
+Then call the text object via nvim-treesitter-textobjects:
+
+```
+:TSTextobjectSelect @codeblock.outer
+:TSTextobjectSelect @codeblock.inner
+```
+
+## `mdLink`
+
+Create the file `~/.config/nvim/queries/markdown_inline/textobjects.scm`:
+
+```scheme
+; extends
+(inline_link) @mdlink.outer
+(link_text) @mdlink.inner
+```
+
+Then call the text object via nvim-treesitter-textobjects:
+
+```
+:TSTextobjectSelect @mdlink.outer
+:TSTextobjectSelect @mdlink.inner
+```
+
+## `mdEmphasis`
+
+Create the file `~/.config/nvim/queries/markdown_inline/textobjects.scm`:
+
+```scheme
+; extends
+(emphasis) @emphasis.outer
+(strong_emphasis) @emphasis.outer
+((strong_emphasis) @emphasis.inner (#offset! @emphasis.inner 0 2 0 -2))
+((emphasis) @emphasis.inner (#offset! @emphasis.inner 0 1 0 -1))
+```
+
+Then call the text object via nvim-treesitter-textobjects:
+
+```
+:TSTextobjectSelect @emphasis.outer
+:TSTextobjectSelect @emphasis.inner
+```
+
+## `cssSelector`
+
+Create the file `~/.config/nvim/queries/css/textobjects.scm`:
+
+```scheme
+; extends
+(class_selector "." @selector.outer (class_name) @selector.inner @selector.outer)
+```
+
+Then call the text object via nvim-treesitter-textobjects:
+
+```
+:TSTextobjectSelect @selector.outer
+:TSTextobjectSelect @selector.inner
+```
+
+## `shellPipe`
+
+Create the file `~/.config/nvim/queries/bash/textobjects.scm` (or `zsh/textobjects.scm` for Zsh):
+
+```scheme
+; extends
+(pipeline (command) @pipeline.inner @pipeline.outer "|" @pipeline.outer)
+```
+
+Then call the text object via nvim-treesitter-textobjects:
+
+```
+:TSTextobjectSelect @pipeline.outer
+:TSTextobjectSelect @pipeline.inner
+```
+
+## `htmlAttribute`
+
+No custom query file is needed for this one. The `nvim-treesitter-textobjects` plugin already ships with built-in support for HTML attributes. Use the existing capture directly:
+
+```
+:TSTextobjectSelect @attribute.outer
+:TSTextobjectSelect @attribute.inner
+```

@@ -1,0 +1,121 @@
+---
+title: "Linewise Text Objects in nvim-various-textobjs"
+sidebarTitle: "Linewise Objects"
+description: "Reference for linewise text objects: entire buffer, rest of paragraph, visible window, rest of window, closed folds, and notebook cells."
+---
+
+Linewise text objects select one or more complete lines and integrate with Vim's linewise visual mode (`V`). This means operators like `d`, `y`, `>`, and `=` act on whole lines rather than character spans — ideal for bulk edits, restructuring, or selecting logical sections of a file.
+
+---
+
+## `entireBuffer`
+
+**Function:** `entireBuffer()`  
+**Default keymap:** `gG`
+
+Selects every line in the current buffer as a single linewise text object. Temporarily disables folding during selection so that folded regions are not accidentally omitted from the top or bottom of the buffer.
+
+```lua
+vim.keymap.set({ "o", "x" }, "gG", '<cmd>lua require("various-textobjs").entireBuffer()<CR>')
+```
+
+<Tip>
+  You can combine `entireBuffer` with the `indentation` text object to create a hybrid `ii` that selects the whole buffer when the cursor is on an unindented line:
+
+  ```lua
+  vim.keymap.set("o", "ii", function()
+    if vim.fn.indent(".") == 0 then
+      require("various-textobjs").entireBuffer()
+    else
+      require("various-textobjs").indentation("inner", "inner")
+    end
+  end)
+  ```
+</Tip>
+
+---
+
+## `restOfParagraph`
+
+**Function:** `restOfParagraph()`  
+**Default keymap:** `r`
+
+Selects from the cursor line to the end of the current paragraph, linewise. Behaves like Vim's `}` motion but produces a linewise selection rather than moving the cursor, and does not include the trailing blank line that `}` lands on. On the last line of the buffer the selection extends to that line without going out of bounds.
+
+```lua
+vim.keymap.set({ "o", "x" }, "r", '<cmd>lua require("various-textobjs").restOfParagraph()<CR>')
+```
+
+---
+
+## `visibleInWindow`
+
+**Function:** `visibleInWindow()`  
+**Default keymap:** `gw`
+
+Selects all lines currently visible in the active window — from the topmost rendered line (`w0`) to the bottommost rendered line (`w$`). Useful for operating on exactly what you can see, regardless of the total buffer size.
+
+```lua
+vim.keymap.set({ "o", "x" }, "gw", '<cmd>lua require("various-textobjs").visibleInWindow()<CR>')
+```
+
+---
+
+## `restOfWindow`
+
+**Function:** `restOfWindow()`  
+**Default keymap:** `gW`
+
+Selects from the cursor line down to the last visible line in the window. A complement to `visibleInWindow` when you only want the lower portion of the visible area.
+
+```lua
+vim.keymap.set({ "o", "x" }, "gW", '<cmd>lua require("various-textobjs").restOfWindow()<CR>')
+```
+
+---
+
+## `closedFold`
+
+**Function:** `closedFold(scope)`  
+**Default keymaps:** `iz` (inner), `az` (outer)  
+**Forward-seeking:** big (15 lines)
+
+Selects a closed fold as a linewise text object. If the cursor is already on a closed fold that fold is selected immediately; otherwise the plugin seeks forward up to `forwardLooking.big` lines for the next closed fold.
+
+- **Inner** — only the lines that belong to the fold itself
+- **Outer** — includes the line immediately after the fold
+
+The fold is temporarily opened so that its lines can be selected correctly. If the operator is `y` (yank) the fold is automatically re-closed afterward; for other operators such as `d` or `gu` the fold is left open.
+
+```lua
+vim.keymap.set({ "o", "x" }, "iz", '<cmd>lua require("various-textobjs").closedFold("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "az", '<cmd>lua require("various-textobjs").closedFold("outer")<CR>')
+```
+
+---
+
+## `notebookCell`
+
+**Function:** `notebookCell(scope)`  
+**Default keymaps:** `iN` (inner), `aN` (outer)
+
+Selects a notebook cell delimited by double-percent cell markers in the [Jupytext percent format](https://jupytext.readthedocs.io/en/latest/formats-scripts.html#the-percent-format), such as `# %%` in Python or `// %%` in JavaScript. The exact marker depends on the buffer's `commentstring`.
+
+- **Inner** — lines of the cell body only, cell border line excluded
+- **Outer** — includes the cell's top border line (`# %%`)
+
+<Note>
+  The buffer must have a `commentstring` set (`:set commentstring?`). Buffers without one — such as plain text files — will produce a warning and abort the operation.
+</Note>
+
+```python
+# %%                  ← included by aN (outer), excluded by iN (inner)
+import pandas as pd   ← always included
+df = pd.read_csv(…)   ← always included
+# %%                  ← start of the next cell (acts as bottom boundary)
+```
+
+```lua
+vim.keymap.set({ "o", "x" }, "iN", '<cmd>lua require("various-textobjs").notebookCell("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "aN", '<cmd>lua require("various-textobjs").notebookCell("outer")<CR>')
+```

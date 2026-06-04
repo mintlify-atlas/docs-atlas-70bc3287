@@ -1,0 +1,129 @@
+---
+title: "Custom Keymaps for nvim-various-textobjs"
+sidebarTitle: "Custom Keymaps"
+description: "How to define your own keybindings for nvim-various-textobjs text objects, including dot-repeat, inner/outer variants, and the special indentation and column APIs."
+---
+
+`nvim-various-textobjs` supports two approaches to keybindings. You can enable the full default set by passing `useDefaults = true` in your `setup()` call and optionally suppressing individual mappings with `disabledDefaults`. Or you can skip the defaults entirely and define every binding yourself, giving you complete control over which keys are used and how inner and outer variants are split. This page covers both approaches in detail.
+
+## How keymaps work
+
+Text object keymaps are registered in two modes simultaneously:
+
+- **`o`** (operator-pending) — activated after an operator like `d`, `c`, or `y`. For example, `dii` deletes the inner indented block.
+- **`x`** (visual) — activated from visual mode to extend or shrink the current selection to the text object's boundaries.
+
+For dot-repeat to work correctly, the keymap's RHS **must** be an Ex command string — not a Lua function closure. Neovim replays dot-repeat by re-issuing the last Ex command; if the RHS is a function, there is nothing for Neovim to replay.
+
+```lua
+-- CORRECT: dot-repeat works
+vim.keymap.set({ "o", "x" }, "U", '<cmd>lua require("various-textobjs").url()<CR>')
+
+-- INCORRECT: dot-repeat does NOT work
+vim.keymap.set({ "o", "x" }, "U", function()
+  require("various-textobjs").url()
+end)
+```
+
+<Warning>
+Always use the Ex command form `'<cmd>lua require("various-textobjs").TEXTOBJ()<CR>'` as the RHS for text object keymaps. Passing a `function() ... end` closure as the RHS breaks dot-repeat, because Neovim has no Ex command to re-execute when you press `.`.
+</Warning>
+
+## Simple objects (no parameters)
+
+For text objects that take no arguments, the Ex command string is straightforward. For objects that take a `scope` argument, create two mappings — one for `"inner"` and one for `"outer"` — following the standard `i`/`a` prefix convention.
+
+```lua
+-- no-parameter object
+vim.keymap.set({ "o", "x" }, "U", '<cmd>lua require("various-textobjs").url()<CR>')
+
+-- inner/outer variants
+vim.keymap.set({ "o", "x" }, "iS", '<cmd>lua require("various-textobjs").subword("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "aS", '<cmd>lua require("various-textobjs").subword("outer")<CR>')
+```
+
+## Indentation text object (two parameters)
+
+The `indentation` text object is unique: it takes **two** separate border parameters rather than a single `scope`. The first parameter controls whether the line above the indented block is included; the second controls the line below. This lets you mix inner and outer independently for the top and bottom borders.
+
+```lua
+vim.keymap.set(
+  { "o", "x" },
+  "ii",
+  '<cmd>lua require("various-textobjs").indentation("inner", "inner")<CR>'
+)
+vim.keymap.set(
+  { "o", "x" },
+  "ai",
+  '<cmd>lua require("various-textobjs").indentation("outer", "inner")<CR>'
+)
+vim.keymap.set(
+  { "o", "x" },
+  "aI",
+  '<cmd>lua require("various-textobjs").indentation("outer", "outer")<CR>'
+)
+```
+
+The default mappings also include `iI` as an alias for `ii` (inner-inner), matching the behaviour of [vim-indent-object](https://github.com/michaeljsmith/vim-indent-object).
+
+## Column text object (direction parameter)
+
+The `column` text object takes a direction instead of a scope. The three valid values are `"down"` (default), `"up"`, and `"both"`.
+
+```lua
+vim.keymap.set({ "o", "x" }, "|", '<cmd>lua require("various-textobjs").column("down")<CR>')
+vim.keymap.set({ "o", "x" }, "a|", '<cmd>lua require("various-textobjs").column("both")<CR>')
+```
+
+## Default keymap table
+
+When `useDefaults = true` is set, the following keymaps are registered automatically. The `Inner` and `Outer` columns show the keys for inner and outer variants respectively. `Single` shows the key used for text objects that have no inner/outer distinction.
+
+| Text Object | Inner | Outer | Single |
+|---|---|---|---|
+| `indentation` | `ii`, `iI` | `ai`, `aI` | — |
+| `greedyOuterIndentation` | `ig` | `ag` | — |
+| `subword` | `iS` | `aS` | — |
+| `anyBracket` | `io` | `ao` | — |
+| `anyQuote` | `iq` | `aq` | — |
+| `value` | `iv` | `av` | — |
+| `key` | `ik` | `ak` | — |
+| `number` | `in` | `an` | — |
+| `chainMember` | `im` | `am` | — |
+| `lineCharacterwise` | `i_` | `a_` | — |
+| `closedFold` | `iz` | `az` | — |
+| `notebookCell` | `iN` | `aN` | — |
+| `filepath` | `iF` | `aF` | — |
+| `color` | `i#` | `a#` | — |
+| `doubleSquareBrackets` | `iD` | `aD` | — |
+| `argument` | `i,` | `a,` | — |
+| `restOfIndentation` | — | — | `R` |
+| `nearEoL` | — | — | `n` |
+| `toNextClosingBracket` | — | — | `C` |
+| `toNextQuotationMark` | — | — | `Q` |
+| `restOfParagraph` | — | — | `r` |
+| `entireBuffer` | — | — | `gG` |
+| `visibleInWindow` | — | — | `gw` |
+| `restOfWindow` | — | — | `gW` |
+| `diagnostic` | — | — | `!` |
+| `column` | — | — | `\|` |
+| `url` | — | — | `L` |
+| `lastChange` | — | — | `g;` |
+| `emoji` | — | — | `.` |
+
+## Disabling specific defaults
+
+If you want most defaults but need to reclaim a handful of keys for other purposes, use `disabledDefaults` to suppress individual mappings by key. The rest of the defaults remain active.
+
+```lua
+require("various-textobjs").setup {
+  keymaps = {
+    useDefaults = true,
+    disabledDefaults = { "ai", "!" }, -- disable only 'ai' and '!'
+  },
+}
+```
+
+<Note>
+If you lazy-load this plugin (e.g. with `event = "VeryLazy"` in lazy.nvim), the default keymaps cannot be registered at startup. To use `useDefaults = true` with lazy.nvim you must also set `lazy = false` in your plugin spec so the plugin loads unconditionally on startup.
+</Note>

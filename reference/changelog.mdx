@@ -1,0 +1,53 @@
+---
+title: "nvim-various-textobjs Changelog and Version History"
+sidebarTitle: "Changelog"
+description: "Notable changes, deprecations, and migration notes for nvim-various-textobjs across versions."
+---
+
+This page summarizes the most notable changes to `nvim-various-textobjs`, with a focus on breaking changes, deprecations, and configuration migrations. For the complete release history including all bug fixes and minor improvements, see the GitHub releases page linked below.
+
+## Recent Notable Changes
+
+- **Filetype-specific objects deprecated** (2025-11-30): `mdFencedCodeBlock`, `mdLink`, `mdEmphasis`, `cssSelector`, `shellPipe`, and `htmlAttribute` are deprecated in favour of Treesitter-based equivalents. Calling any of these functions still works but shows a deprecation warning with migration instructions. See the [Deprecated](/reference/deprecated) page for the full migration guide.
+
+- **`diagnostic` wrap parameter removed**: The `diagnostic()` function no longer accepts a `wrap` boolean parameter directly. Set wrapping behaviour via `textobjs.diagnostic.wrap` in the `setup()` config instead. Configuring this directly in the function call was deprecated on 2024-12-03.
+
+  ```lua
+  -- Before (no longer supported)
+  require("various-textobjs").diagnostic(true)
+
+  -- After
+  require("various-textobjs").setup {
+    textobjs = {
+      diagnostic = { wrap = true },
+    },
+  }
+  ```
+
+- **`column` direction parameter**: The `column()` text object now accepts an optional `direction` parameter controlling the selection direction: `"down"` (default), `"up"`, or `"both"`. This allows you to map distinct keymaps for each behaviour.
+
+  ```lua
+  vim.keymap.set({ "o", "x" }, "|",  '<cmd>lua require("various-textobjs").column("down")<CR>')
+  vim.keymap.set({ "o", "x" }, "a|", '<cmd>lua require("various-textobjs").column("both")<CR>')
+  ```
+
+- **`subword.noCamelToPascalCase` option**: A new config option `textobjs.subword.noCamelToPascalCase` (default `true`) controls what happens when you delete the first subword of a camelCase word. When enabled, the result remains camelCase rather than becoming PascalCase — for example, deleting `my` from `myVariable` yields `variable`, not `Variable`.
+
+  ```lua
+  require("various-textobjs").setup {
+    textobjs = {
+      subword = { noCamelToPascalCase = true },
+    },
+  }
+  ```
+
+## Links
+
+<CardGroup cols={2}>
+  <Card title="GitHub Releases" icon="github" href="https://github.com/chrisgrieser/nvim-various-textobjs/releases">
+    Full release history with changelogs for every version.
+  </Card>
+  <Card title="Deprecated Objects" icon="triangle-exclamation" href="/reference/deprecated">
+    Migration guide for all deprecated filetype-specific text objects.
+  </Card>
+</CardGroup>

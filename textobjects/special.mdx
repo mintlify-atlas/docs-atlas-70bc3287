@@ -1,0 +1,140 @@
+---
+title: "Special Text Objects: Diagnostic, Emoji, Column, and More"
+sidebarTitle: "Special Objects"
+description: "Reference for special text objects in nvim-various-textobjs: LSP diagnostic, emoji/Nerd Font glyph, blockwise column, nearEoL, and lineCharacterwise."
+---
+
+These text objects use specialized selection strategies that go beyond the pattern matching used by most other objects in the plugin. They integrate with Neovim's LSP diagnostic API, decode raw UTF-8 codepoints for Unicode-aware glyph detection, engage blockwise visual mode for column selection, or position selections relative to the end of the current line.
+
+---
+
+## `diagnostic`
+
+**Function:** `diagnostic()`  
+**Default keymap:** `!`  
+**Forward-seeking:** unlimited (wraps the buffer when configured)
+
+Selects the span of the current or next LSP / Neovim diagnostic. When the cursor is already inside a diagnostic the plugin correctly selects that diagnostic rather than jumping to the next one. When the cursor is not on a diagnostic it uses `vim.diagnostic.get_next()` to find the nearest one ahead.
+
+**Config:** `textobjs.diagnostic.wrap` (default `true`) — when `true`, the search wraps around to the top of the buffer if no diagnostic is found after the cursor.
+
+```lua
+require("various-textobjs").setup({
+  textobjs = {
+    diagnostic = {
+      wrap = true,
+    },
+  },
+})
+
+vim.keymap.set({ "o", "x" }, "!", '<cmd>lua require("various-textobjs").diagnostic()<CR>')
+```
+
+---
+
+## `emoji`
+
+**Function:** `emoji()`  
+**Default keymap:** `.`  
+**Forward-seeking:** small
+
+Selects a single emoji or Nerd Font glyph by decoding raw UTF-8 codepoints. The plugin searches forward from the cursor position and selects the first glyph it finds within the forward-seeking window.
+
+Covered Unicode ranges:
+
+| Range | Block |
+|-------|-------|
+| U+1F600–U+1F64F | Emoticons |
+| U+1F300–U+1F5FF | Misc Symbols and Pictographs |
+| U+1F680–U+1F6FF | Transport and Map |
+| U+1F900–U+1F9FF | Supplemental Symbols and Pictographs |
+| U+1FA70–U+1FAFF | Symbols and Pictographs Extended-A |
+| U+2600–U+26FF | Miscellaneous Symbols |
+| U+2700–U+27BF | Dingbats |
+| U+E000–U+F8FF | Private Use Area (Nerd Fonts) |
+| U+F0000–U+FFFFD | Supplementary Private Use Area-A |
+| U+100000–U+10FFFD | Supplementary Private Use Area-B |
+
+<Tip>
+  Because `.` is forward-seeking, `c.` will jump to the next emoji and change it in one step — no need to navigate to it first.
+</Tip>
+
+```lua
+vim.keymap.set({ "o", "x" }, ".", '<cmd>lua require("various-textobjs").emoji()<CR>')
+```
+
+---
+
+## `column`
+
+**Function:** `column(direction)`  
+**Default keymap:** `|`  
+**Direction values:** `"down"` (default), `"up"`, `"both"`
+
+Selects a rectangular column of text using Vim's blockwise visual mode (`<C-v>`). Starting from the cursor position it extends in the given direction until it hits a line that is shorter than the cursor column or a line whose indentation level is higher than the cursor column. Accepts `{count}` to widen the selection by additional columns (e.g. `3|` for a three-column-wide block).
+
+<Note>
+  `column` internally enters blockwise visual mode (`<C-v>`). This is intentional — the resulting selection is a true rectangular block that works with all blockwise operators such as `I` (insert), `A` (append), `c` (change), and `d` (delete).
+</Note>
+
+| Keymap | Call | Behaviour |
+|--------|------|-----------|
+| `\|`   | `column("down")` | Extend downward |
+| `a\|`  | `column("both")` | Extend in both directions |
+
+```lua
+-- Default: downward column
+vim.keymap.set({ "o", "x" }, "|", '<cmd>lua require("various-textobjs").column("down")<CR>')
+
+-- Both directions variant
+vim.keymap.set({ "o", "x" }, "a|", '<cmd>lua require("various-textobjs").column("both")<CR>')
+
+-- Upward variant (custom)
+vim.keymap.set({ "o", "x" }, "A|", '<cmd>lua require("various-textobjs").column("up")<CR>')
+```
+
+---
+
+## `nearEoL`
+
+**Function:** `nearEoL()`  
+**Default keymap:** `n`
+
+Selects from the cursor position to the end of the current line, excluding the very last character and any trailing whitespace. Accepts `{count}`: pressing `2n` excludes the last two characters instead of one, `3n` excludes the last three, and so on.
+
+This is useful for changing everything up to (but not including) a closing delimiter that lives at the end of a line, e.g. changing the content before a trailing `;` or `"`.
+
+```
+local msg = "hello world"
+            ^^^^^^^^^^^    → n selects from cursor to 'd' in 'world', excluding '"'
+```
+
+```lua
+vim.keymap.set({ "o", "x" }, "n", '<cmd>lua require("various-textobjs").nearEoL()<CR>')
+```
+
+---
+
+## `lineCharacterwise`
+
+**Function:** `lineCharacterwise(scope)`  
+**Default keymaps:** `i_` (inner), `a_` (outer)  
+**Forward-seeking:** small; seeks to next non-blank line when on a blank line
+
+Selects the current line as a **characterwise** object rather than a linewise one. This distinction matters: a characterwise selection does not include the newline at the end of the line, allowing operations like `yi_` to yank just the visible characters without a trailing newline.
+
+- **Inner** — line content excluding leading indentation and trailing spaces
+- **Outer** — full line content including indentation and trailing spaces
+
+When the cursor is on a blank line the plugin seeks forward to the next non-blank line.
+
+```
+    local x = 42   -- some comment
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    → a_ selects including indentation
+         ^^^^^^^^^^^^^^^^^^^^^^^^    → i_ selects excluding leading spaces
+```
+
+```lua
+vim.keymap.set({ "o", "x" }, "i_", '<cmd>lua require("various-textobjs").lineCharacterwise("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "a_", '<cmd>lua require("various-textobjs").lineCharacterwise("outer")<CR>')
+```

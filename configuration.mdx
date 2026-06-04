@@ -1,0 +1,138 @@
+---
+title: "Configure nvim-various-textobjs Options and Keymaps"
+sidebarTitle: "Configuration"
+description: "Full reference for nvim-various-textobjs setup options: keymaps, forward-looking distances, jumplist behavior, and per-object settings."
+---
+
+The `.setup()` call is entirely optional — if you are wiring up keymaps manually and are happy with all the defaults, you do not need to call it at all. You only need `setup()` if you want to enable the built-in default keymaps, disable a subset of them, or change any of the options documented below.
+
+## Default Configuration
+
+The block below shows the full default configuration with all available options and their default values. Pass only the keys you want to override — the setup call performs a deep merge so omitted keys retain their defaults.
+
+```lua
+require("various-textobjs").setup {
+  keymaps = {
+    useDefaults = false,
+    ---@type string[]
+    disabledDefaults = {},
+  },
+  forwardLooking = {
+    small = 5,
+    big = 15,
+  },
+  behavior = {
+    jumplist = true,
+  },
+  textobjs = {
+    indentation = {
+      blanksAreDelimiter = false,
+    },
+    subword = {
+      noCamelToPascalCase = true,
+    },
+    diagnostic = {
+      wrap = true,
+    },
+    url = {
+      patterns = { [[%l%l%l+://[^%s)%]}"'`>]+]] },
+    },
+  },
+  notify = {
+    icon = "󰠱",
+    whenObjectNotFound = true,
+  },
+  debug = false,
+}
+```
+
+---
+
+## Option Reference
+
+### keymaps
+
+<ParamField body="keymaps.useDefaults" type="boolean" default="false">
+  When `true`, registers all default keymaps from the built-in keymap table on plugin load. If lazy-loading the plugin via `keys = {}`, set `lazy = false` instead — default keymaps cannot be registered when the plugin loads from a key event.
+</ParamField>
+
+<ParamField body="keymaps.disabledDefaults" type="string[]" default="{}">
+  List of keymap strings to exclude when `useDefaults = true`. For example: `{ "ai", "!" }` disables the `ai` indentation and `!` diagnostic keymaps while keeping every other default keymap active.
+</ParamField>
+
+### forwardLooking
+
+<ParamField body="forwardLooking.small" type="integer" default="5">
+  Lines to search forward for text objects assigned the "small" seek distance. Applies to: `anyBracket`, `anyQuote`, `toNextClosingBracket`, `toNextQuotationMark`, `lineCharacterwise`, `value`, `key`, `number`, `chainMember`, `argument`, `color`, `doubleSquareBrackets`, `subword`, `emoji`.
+</ParamField>
+
+<ParamField body="forwardLooking.big" type="integer" default="15">
+  Lines to search forward for text objects assigned the "big" seek distance. Applies to: `url`, `filepath`, `closedFold`.
+</ParamField>
+
+### behavior
+
+<ParamField body="behavior.jumplist" type="boolean" default="true">
+  When `true`, the cursor position before a text object selection is saved to the jumplist, so `<C-o>` can return to the position you were at before the operation.
+</ParamField>
+
+### textobjs (per-object settings)
+
+<ParamField body="textobjs.indentation.blanksAreDelimiter" type="boolean" default="false">
+  Controls how blank lines interact with the indentation text object. When `false`, blank lines within an indented block are included — the block expands through them. When `true`, blank lines act as delimiters and split the indentation block, which is useful if you prefer a tighter selection that stops at empty lines.
+</ParamField>
+
+<ParamField body="textobjs.subword.noCamelToPascalCase" type="boolean" default="true">
+  When `true` and you delete the first subword of a camelCase word, the plugin automatically lowercases the following subword so the result stays camelCase rather than accidentally becoming PascalCase. For example, deleting `my` from `myVariable` produces `variable` rather than `Variable`.
+</ParamField>
+
+<ParamField body="textobjs.diagnostic.wrap" type="boolean" default="true">
+  When `true`, the diagnostic text object wraps around to the start of the buffer if no next diagnostic is found after the cursor position, ensuring you can always reach a diagnostic regardless of cursor location.
+</ParamField>
+
+<ParamField body="textobjs.url.patterns" type="string[]">
+  Lua pattern list used to detect URLs. The default pattern matches any `protocol://...` URL (three or more lowercase letters followed by `://` and non-whitespace, non-delimiter characters). Override this list to restrict matching to specific protocols — for example, `{ [[https?://[^%s)%]}"'` + "`" + `>]+]] }` matches only HTTP and HTTPS URLs.
+</ParamField>
+
+### notify
+
+<ParamField body="notify.icon" type="string" default="󰠱">
+  Icon shown alongside the notification message in plugins like `nvim-notify` when a text object cannot be found. Has no effect if you are not using a notification plugin.
+</ParamField>
+
+<ParamField body="notify.whenObjectNotFound" type="boolean" default="true">
+  When `true`, displays a notification whenever a text object search comes up empty — i.e., no match was found within the forward-looking range. Set to `false` to suppress these messages and fail silently.
+</ParamField>
+
+### debug
+
+<ParamField body="debug" type="boolean" default="false">
+  Enables internal diagnostic messages during text object operations. Useful when developing custom text object integrations or debugging unexpected selection behavior.
+</ParamField>
+
+---
+
+## Dynamically Switching Settings
+
+Because `setup()` deep-merges with the existing config (using `vim.tbl_deep_extend("force", ...)`), you can call it multiple times at runtime — including inside a keymap function — to temporarily override specific settings for a single text object invocation. This is the recommended pattern for creating two keymaps that select the same text object type but with different matching behavior.
+
+A common example is having separate keymaps for HTTP and FTP URLs:
+
+```lua
+vim.keymap.set({ "o", "x" }, "H", function()
+  require("various-textobjs").setup {
+    textobjs = {
+      url = {
+        patterns = { [[https?://[^%s)%]}"'`>]+]] },
+      },
+    },
+  }
+  return "<cmd>lua require('various-textobjs').url()<CR>"
+end, { expr = true, desc = "http-url textobj" })
+```
+
+The keymap is set with `expr = true` so the function return value (the Ex command string) is executed as the keymap RHS, which preserves dot-repeat. The `setup()` call runs first and narrows the URL pattern to HTTP/HTTPS only; the subsequent `url()` call then uses that updated pattern.
+
+<Note>
+  Each `setup()` call deep-merges with the existing config, so you only need to specify the keys you want to change. All other options remain at their current values — either the defaults or whatever you set during plugin initialization.
+</Note>

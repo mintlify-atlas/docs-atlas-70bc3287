@@ -1,0 +1,315 @@
+---
+title: "Characterwise Text Objects in nvim-various-textobjs"
+sidebarTitle: "Charwise Objects"
+description: "Reference for characterwise text objects: subword, bracket, quote, value, key, number, URL, filepath, chain member, argument, color, and more."
+---
+
+Characterwise text objects operate on spans of text within or across lines and integrate naturally with Vim's visual (`v`) and operator-pending modes. Most of them are **forward-seeking**: if the cursor is not directly on the object, the plugin automatically looks ahead by a configurable number of lines (`forwardLooking.small = 5` or `forwardLooking.big = 15` by default) to find the next match — so you can act on nearby objects without navigating to them first.
+
+---
+
+## `subword`
+
+**Function:** `subword(scope)`  
+**Default keymaps:** `iS` (inner), `aS` (outer)  
+**Forward-seeking:** none (operates at the cursor word)
+
+Selects one segment of a compound identifier. Handles `camelCase`, `PascalCase`, `snake_case`, `UPPER_CASE`, `kebab-case`, and numeric segments.
+
+- **Inner** — only the segment characters themselves
+- **Outer** — includes a trailing (or, for the last segment, leading) `_` or `-` separator
+
+**Config:** `textobjs.subword.noCamelToPascalCase` (default `true`) — when deleting the first segment of a `camelCased` word, the remaining word is automatically lower-cased so the result stays `camelCase` rather than becoming `PascalCase`.
+
+```
+camelCaseWord
+^^^^^            → iS selects "camel"
+     ^^^^        → iS selects "Case" (inner); aS includes leading uppercase boundary
+```
+
+```lua
+vim.keymap.set({ "o", "x" }, "iS", '<cmd>lua require("various-textobjs").subword("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "aS", '<cmd>lua require("various-textobjs").subword("outer")<CR>')
+```
+
+---
+
+## `anyBracket`
+
+**Function:** `anyBracket(scope)`  
+**Default keymaps:** `io` (inner), `ao` (outer)  
+**Forward-seeking:** small
+
+Selects the innermost matching bracket pair — `()`, `[]`, or `{}` — on the current line. When multiple bracket types are present the closest (innermost) one wins.
+
+- **Inner** — text between the brackets, brackets excluded
+- **Outer** — includes the bracket characters themselves
+
+```lua
+vim.keymap.set({ "o", "x" }, "io", '<cmd>lua require("various-textobjs").anyBracket("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "ao", '<cmd>lua require("various-textobjs").anyBracket("outer")<CR>')
+```
+
+---
+
+## `anyQuote`
+
+**Function:** `anyQuote(scope)`  
+**Default keymaps:** `iq` (inner), `aq` (outer)  
+**Forward-seeking:** small
+
+Selects text enclosed by any unescaped quotation mark — `"`, `'`, or `` ` `` — on a single line. Escaped quotes (`\"`, `\'`, `` \` ``) are correctly ignored.
+
+- **Inner** — text between the quotes, quotes excluded
+- **Outer** — includes the quotation mark characters
+
+```lua
+vim.keymap.set({ "o", "x" }, "iq", '<cmd>lua require("various-textobjs").anyQuote("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "aq", '<cmd>lua require("various-textobjs").anyQuote("outer")<CR>')
+```
+
+---
+
+## `toNextClosingBracket`
+
+**Function:** `toNextClosingBracket()`  
+**Default keymap:** `C`  
+**Forward-seeking:** small (can span multiple lines)
+
+Selects from the current cursor position to the next closing bracket character — `]`, `)`, or `}` — inclusive. Unlike `anyBracket`, this is a one-way selection that does not require the cursor to be inside a bracket pair.
+
+```lua
+vim.keymap.set({ "o", "x" }, "C", '<cmd>lua require("various-textobjs").toNextClosingBracket()<CR>')
+```
+
+---
+
+## `toNextQuotationMark`
+
+**Function:** `toNextQuotationMark()`  
+**Default keymap:** `Q`  
+**Forward-seeking:** small (can span multiple lines)
+
+Selects from the cursor to the next unescaped quotation mark — `"`, `'`, or `` ` `` — inclusive. Complements `toNextClosingBracket` for quote-delimited contexts.
+
+```lua
+vim.keymap.set({ "o", "x" }, "Q", '<cmd>lua require("various-textobjs").toNextQuotationMark()<CR>')
+```
+
+---
+
+## `value`
+
+**Function:** `value(scope)`  
+**Default keymaps:** `iv` (inner), `av` (outer)  
+**Forward-seeking:** small
+
+Selects the right-hand side of a key-value pair or variable assignment. Trailing comments are automatically excluded from the selection. Does **not** match equality comparators such as `==`, `!=`, or `::`.
+
+<Note>
+  `value` does not work for multiline assignments. The entire value must be on a single line.
+</Note>
+
+- **Inner** — value only, trailing `,` or `;` excluded
+- **Outer** — includes a trailing `,` or `;`
+
+```
+local x = "hello"  -- a comment
+          ^^^^^^^               → iv selects "hello"
+          ^^^^^^^^,             → av selects "hello", (if comma present)
+```
+
+```lua
+vim.keymap.set({ "o", "x" }, "iv", '<cmd>lua require("various-textobjs").value("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "av", '<cmd>lua require("various-textobjs").value("outer")<CR>')
+```
+
+---
+
+## `key`
+
+**Function:** `key(scope)`  
+**Default keymaps:** `ik` (inner), `ak` (outer)  
+**Forward-seeking:** small
+
+Selects the left-hand side of a key-value pair or assignment.
+
+- **Inner** — only the key identifier
+- **Outer** — includes the following `=` or `:` (and any surrounding space)
+
+```lua
+vim.keymap.set({ "o", "x" }, "ik", '<cmd>lua require("various-textobjs").key("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "ak", '<cmd>lua require("various-textobjs").key("outer")<CR>')
+```
+
+---
+
+## `number`
+
+**Function:** `number(scope)`  
+**Default keymaps:** `in` (inner), `an` (outer)  
+**Forward-seeking:** small
+
+Selects a numeric literal, similar to what `<C-a>` / `<C-x>` would act on.
+
+- **Inner** — digits only (`42`, `007`)
+- **Outer** — includes a leading `-` sign, decimal point, and uses `_` as a thousand separator (`-3.14`, `1_000_000`)
+
+```lua
+vim.keymap.set({ "o", "x" }, "in", '<cmd>lua require("various-textobjs").number("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "an", '<cmd>lua require("various-textobjs").number("outer")<CR>')
+```
+
+---
+
+## `url`
+
+**Function:** `url()`  
+**Default keymap:** `L`  
+**Forward-seeking:** big (15 lines)
+
+Selects a URL beginning with a protocol such as `http`, `https`, `ftp`, or any other scheme. The list of patterns is configurable via `textobjs.url.patterns`.
+
+<Tip>
+  Because `url` is forward-seeking over 15 lines, you can use it to build a smarter `gx` that opens the next URL in the buffer without moving the cursor to it first. See the Advanced Recipes page for the full implementation.
+</Tip>
+
+```lua
+-- Custom URL patterns (default matches any lowercase-protocol URL)
+require("various-textobjs").setup({
+  textobjs = {
+    url = {
+      patterns = { [[%l%l%l+://[^%s)%]}\"'`>]+]] },
+    },
+  },
+})
+
+vim.keymap.set({ "o", "x" }, "L", '<cmd>lua require("various-textobjs").url()<CR>')
+```
+
+---
+
+## `filepath`
+
+**Function:** `filepath(scope)`  
+**Default keymaps:** `iF` (inner), `aF` (outer)  
+**Forward-seeking:** big
+
+Matches UNIX-style file paths. Supports `~` and `$HOME` expansions. Does **not** match paths that contain spaces.
+
+- **Inner** — filename only (everything after the last `/`)
+- **Outer** — full path including the directory portion
+
+```lua
+vim.keymap.set({ "o", "x" }, "iF", '<cmd>lua require("various-textobjs").filepath("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "aF", '<cmd>lua require("various-textobjs").filepath("outer")<CR>')
+```
+
+---
+
+## `chainMember`
+
+**Function:** `chainMember(scope)`  
+**Default keymaps:** `im` (inner), `am` (outer)  
+**Forward-seeking:** small
+
+Selects one segment of a method or property chain connected with `.` or `:`. A segment may include a call with arguments, e.g. `baz(param)` in `foo.bar.baz(param)`.
+
+- **Inner** — the member identifier and its call (if any), without the separator
+- **Outer** — includes the leading `.` or `:`
+
+```
+foo.bar.baz(param)
+    ^^^              → im selects "bar"
+   ^^^^              → am selects ".bar"
+        ^^^^^^^^^^   → im selects "baz(param)"
+```
+
+```lua
+vim.keymap.set({ "o", "x" }, "im", '<cmd>lua require("various-textobjs").chainMember("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "am", '<cmd>lua require("various-textobjs").chainMember("outer")<CR>')
+```
+
+---
+
+## `argument`
+
+**Function:** `argument(scope)`  
+**Default keymaps:** `i,` (inner), `a,` (outer)  
+**Forward-seeking:** small
+
+Selects a comma-separated argument within a function call or list.
+
+- **Inner** — the argument value only
+- **Outer** — includes the adjacent `,`
+
+<Note>
+  The pattern-based matching used here cannot reliably handle arguments that themselves contain parentheses. For those cases, [nvim-treesitter-textobjects](https://github.com/nvim-treesitter/nvim-treesitter-textobjects) provides a more accurate alternative.
+</Note>
+
+```lua
+vim.keymap.set({ "o", "x" }, "i,", '<cmd>lua require("various-textobjs").argument("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "a,", '<cmd>lua require("various-textobjs").argument("outer")<CR>')
+```
+
+---
+
+## `color`
+
+**Function:** `color(scope)`  
+**Default keymaps:** `i#` (inner), `a#` (outer)  
+**Forward-seeking:** small
+
+Selects color literals in a variety of common formats:
+
+| Format | Example |
+|--------|---------|
+| HEX | `#1a2b3c` |
+| CSS RGB / RGBA | `rgb(255, 128, 0)` / `rgba(255, 128, 0, 0.5)` |
+| CSS HSL / HSLA | `hsl(200, 50%, 30%)` / `hsla(200, 50%, 30%, 0.8)` |
+| ANSI escape (`\e[`) | `\e[1;32m` |
+| ANSI escape (`\033[`) | `\033[48;5;123m` |
+| ANSI escape (`\x1b[`) | `\x1b[0m` |
+
+- **Inner** — only the color value itself (e.g. `1a2b3c` for HEX, digits and commas for CSS)
+- **Outer** — includes the format prefix (e.g. `#` for HEX, `rgb(` … `)` for CSS)
+
+```lua
+vim.keymap.set({ "o", "x" }, "i#", '<cmd>lua require("various-textobjs").color("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "a#", '<cmd>lua require("various-textobjs").color("outer")<CR>')
+```
+
+---
+
+## `doubleSquareBrackets`
+
+**Function:** `doubleSquareBrackets(scope)`  
+**Default keymaps:** `iD` (inner), `aD` (outer)  
+**Forward-seeking:** small
+
+Selects text enclosed in `[[…]]` double square brackets, as used in Lua long strings, Neorg links, and Obsidian wikilinks.
+
+- **Inner** — text between the brackets only
+- **Outer** — includes all four bracket characters
+
+```lua
+vim.keymap.set({ "o", "x" }, "iD", '<cmd>lua require("various-textobjs").doubleSquareBrackets("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "aD", '<cmd>lua require("various-textobjs").doubleSquareBrackets("outer")<CR>')
+```
+
+---
+
+## `lastChange`
+
+**Function:** `lastChange()`  
+**Default keymap:** `g;`
+
+Selects the text region that was most recently changed, yanked, or pasted — equivalent to the range between the `[` and `]` marks that Neovim sets automatically after any such operation. Deletion operations (which leave an empty range) are detected and aborted with a warning.
+
+<Note>
+  Paste-manipulation plugins that rewrite the `[` / `]` marks may interfere with this text object.
+</Note>
+
+```lua
+vim.keymap.set({ "o", "x" }, "g;", '<cmd>lua require("various-textobjs").lastChange()<CR>')
+```

@@ -1,0 +1,139 @@
+---
+title: "Indentation Text Objects in nvim-various-textobjs"
+sidebarTitle: "Indentation"
+description: "Reference for indentation-based text objects: ii, ai, aI, ig/ag (greedy), and R (rest of indentation) — with inner/outer semantics explained."
+---
+
+Indentation text objects select blocks of lines that share the same or deeper indentation level relative to the cursor line. They are particularly useful for languages like Python, YAML, and Lua where indentation conveys structure, letting you yank, delete, indent, or operate on entire logical blocks without needing Treesitter or language-specific support.
+
+## `indentation`
+
+**Function:** `indentation(startBorder, endBorder)`
+
+Both parameters accept `"inner"` or `"outer"` independently, giving fine-grained control over which border lines are included in the selection:
+
+- `startBorder = "inner"` — excludes the line above the indented block (the "opening" border)
+- `startBorder = "outer"` — includes the line above the indented block
+- `endBorder = "inner"` — excludes the line below the indented block (the "closing" border)
+- `endBorder = "outer"` — includes the line below the indented block
+
+| Keymap | Call | Behaviour |
+|--------|------|-----------|
+| `ii`   | `indentation("inner", "inner")` | Indented lines only — no border lines |
+| `ai`   | `indentation("outer", "inner")` | Include the line above, exclude the line below |
+| `aI`   | `indentation("outer", "outer")` | Include both border lines |
+| `iI`   | `indentation("inner", "inner")` | Alias for `ii` |
+
+<Note>
+  If the cursor is on a blank line, the plugin seeks forward to the next non-blank line automatically. If the cursor (or the resolved non-blank line) has zero indentation, the operation warns and aborts rather than selecting the entire file unexpectedly.
+</Note>
+
+### Config option
+
+`textobjs.indentation.blanksAreDelimiter` (default: `false`)
+
+When `false`, blank lines inside the indented block are treated as part of it and traversed through. When `true`, blank lines act as hard delimiters, stopping the selection at the first blank line encountered in either direction.
+
+```lua
+require("various-textobjs").setup({
+  textobjs = {
+    indentation = {
+      blanksAreDelimiter = false, -- set true to treat blank lines as block boundaries
+    },
+  },
+})
+```
+
+### Visual example
+
+```python
+def greet(name):          # ← included by "outer" startBorder (ai / aI)
+    print("Hello,")       # ← always included (cursor here)
+    print(name)           # ← always included
+                          # ← blank line: included unless blanksAreDelimiter = true
+    return name           # ← always included
+# next unindented line    # ← included by "outer" endBorder (aI)
+```
+
+With the cursor on `print("Hello,")`:
+- `dii` — deletes only the four indented lines
+- `dai` — deletes the indented lines plus `def greet(name):`
+- `daI` — deletes everything shown above including the unindented line after
+
+### Custom keymap example
+
+```lua
+-- Set your own keymaps (dot-repeat requires the <cmd>…<CR> form)
+vim.keymap.set({ "o", "x" }, "ii", '<cmd>lua require("various-textobjs").indentation("inner", "inner")<CR>')
+vim.keymap.set({ "o", "x" }, "ai", '<cmd>lua require("various-textobjs").indentation("outer", "inner")<CR>')
+vim.keymap.set({ "o", "x" }, "aI", '<cmd>lua require("various-textobjs").indentation("outer", "outer")<CR>')
+vim.keymap.set({ "o", "x" }, "iI", '<cmd>lua require("various-textobjs").indentation("inner", "inner")<CR>')
+```
+
+---
+
+## `restOfIndentation`
+
+**Function:** `restOfIndentation()`  
+**Default keymap:** `R`
+
+Selects from the cursor line downward through all lines that have the same or higher indentation level — essentially the "forward half" of `ii`. It is useful for deleting the tail of a loop body, the remaining branches of a conditional, or any trailing lines in a block.
+
+If the cursor is on a blank line the plugin uses the next non-blank line's indentation as the reference. If that line has zero indentation the operation warns and aborts.
+
+```lua
+vim.keymap.set({ "o", "x" }, "R", '<cmd>lua require("various-textobjs").restOfIndentation()<CR>')
+```
+
+---
+
+## `greedyOuterIndentation`
+
+**Function:** `greedyOuterIndentation(scope)`  
+**Default keymaps:** `ig` (inner), `ag` (outer)
+
+Like the outer indentation text object (`aI`) but additionally expanded to include surrounding blank lines in both directions, making it behave similarly to Vim's built-in paragraph objects `ap`/`ip`. This is particularly handy for selecting a function together with its preceding docstring or annotation.
+
+- **Inner (`ig`)** — expands to blank lines on both sides, but excludes the blank line below
+- **Outer (`ag`)** — expands to blank lines on both sides, includes the blank line below (mirrors `ap` semantics)
+
+### Visual example
+
+```python
+                         # ← blank line above: included by both ig and ag
+@decorator               # ← included by both ig and ag
+def my_function():
+    do_something()       # ← cursor here
+    return result
+                         # ← blank line below: included only by ag (outer)
+```
+
+```lua
+vim.keymap.set({ "o", "x" }, "ig", '<cmd>lua require("various-textobjs").greedyOuterIndentation("inner")<CR>')
+vim.keymap.set({ "o", "x" }, "ag", '<cmd>lua require("various-textobjs").greedyOuterIndentation("outer")<CR>')
+```
+
+---
+
+## Advanced recipes
+
+<Tip>
+  You can combine `ii` with `entireBuffer` to create a hybrid text object: when the cursor is on an unindented line, `ii` falls back to selecting the whole buffer. This is useful if you want a single mnemonic for "select this block, or everything if there is no block."
+
+  ```lua
+  vim.keymap.set("o", "ii", function()
+    if vim.fn.indent(".") == 0 then
+      require("various-textobjs").entireBuffer()
+    else
+      require("various-textobjs").indentation("inner", "inner")
+    end
+  end)
+  ```
+</Tip>
+
+The indentation text object is also the building block for two popular custom commands:
+
+- **`dsi` — Delete Surrounding Indentation**: dedents the inner block and removes the border lines above and below. Analogous to `ds)` from vim-surround but for indentation levels.
+- **`ysii` — Yank Surrounding Indentation**: copies the two border lines surrounding the indented block into the `+` register without moving the cursor.
+
+Refer to the Advanced Recipes page for the full Lua implementations of both commands.

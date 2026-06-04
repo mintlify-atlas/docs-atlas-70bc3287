@@ -1,0 +1,92 @@
+---
+title: "Using nvim-various-textobjs as a Lua API"
+sidebarTitle: "Lua API"
+description: "Call nvim-various-textobjs text objects from Lua to build custom motions, hybrid text objects, and editor commands beyond standard keymaps."
+---
+
+Every text object in `nvim-various-textobjs` is also a callable Lua function. This means you can build custom commands that select text programmatically and then act on it — opening URLs, transforming indented blocks, creating motions, or anything else you can express in Lua. When a text object finds a match, Neovim switches to visual mode. You can detect this transition with `vim.fn.mode()` to branch your logic based on whether the object was actually found.
+
+## Calling text objects from Lua
+
+There are two ways to call a text object function from Lua, and the choice affects whether dot-repeat works.
+
+**Ex command form** — use a string RHS that calls the function via `<cmd>lua`. This is the form required for dot-repeat to work, because Neovim can re-issue the Ex command on `.`.
+
+**Function call form** — call the function directly inside a Lua closure. Dot-repeat will not work, but you can inspect the result and take custom actions based on whether the text object was found.
+
+```lua
+-- Ex command form (supports dot-repeat)
+vim.keymap.set({ "o", "x" }, "U", '<cmd>lua require("various-textobjs").url()<CR>')
+
+-- Function call form (for custom logic, no dot-repeat)
+vim.keymap.set("n", "gx", function()
+  require("various-textobjs").url()
+  local foundURL = vim.fn.mode() == "v"
+  if not foundURL then return end
+  -- ... act on selection
+end)
+```
+
+## Detecting whether a text object was found
+
+The plugin communicates success by entering visual mode. Check the mode after calling the function to know whether a match was found:
+
+- **Characterwise objects** — check `vim.fn.mode() == "v"`
+- **Linewise objects** — check `vim.fn.mode():find("V")`
+- **Blockwise objects** (`column`) — check `vim.fn.mode() == "\22"` (Ctrl-V)
+
+If the text object found nothing, Neovim stays in the mode it was already in, so these checks reliably distinguish success from failure.
+
+## Getting the selected text
+
+Once a text object has selected a region (switching to visual mode), you can retrieve the covered text using `vim.fn.getregion`. This requires Neovim 0.10 or later.
+
+```lua
+local text = vim.fn.getregion(
+  vim.fn.getpos("."),
+  vim.fn.getpos("v"),
+  { type = "v" }
+)[1]
+```
+
+`getpos(".")` is the cursor end of the selection and `getpos("v")` is the anchor end. The `[1]` index retrieves the first (and for single-line characterwise selections, only) line of the selected region.
+
+## Function signatures
+
+Most text objects take a single `scope` parameter of `"inner"` or `"outer"`. A few have a different signature. The full list:
+
+| Function | Parameter | Values |
+|---|---|---|
+| `indentation(startBorder, endBorder)` | Two separate border args | Both accept `"inner"` \| `"outer"`. The first controls whether the line above the block is included; the second controls the line below. |
+| `greedyOuterIndentation(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `subword(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `anyBracket(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `anyQuote(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `value(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `key(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `number(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `filepath(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `chainMember(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `argument(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `color(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `doubleSquareBrackets(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `closedFold(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `notebookCell(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `lineCharacterwise(scope)` | `scope` | `"inner"` \| `"outer"` |
+| `column(direction)` | `direction` | `"down"` \| `"up"` \| `"both"` (default: `"down"`) |
+| `url()` | — | No parameters |
+| `diagnostic()` | — | No parameters |
+| `emoji()` | — | No parameters |
+| `entireBuffer()` | — | No parameters |
+| `restOfParagraph()` | — | No parameters |
+| `visibleInWindow()` | — | No parameters |
+| `restOfWindow()` | — | No parameters |
+| `restOfIndentation()` | — | No parameters |
+| `nearEoL()` | — | No parameters |
+| `lastChange()` | — | No parameters |
+| `toNextClosingBracket()` | — | No parameters |
+| `toNextQuotationMark()` | — | No parameters |
+
+<Note>
+The `setup()` function can be called multiple times. Each call deep-merges with the existing config using `vim.tbl_deep_extend`, so you can call `setup()` immediately before a text object to dynamically override settings for just that one invocation — for example, to temporarily change the URL pattern matched by `url()` — without affecting any other text objects.
+</Note>

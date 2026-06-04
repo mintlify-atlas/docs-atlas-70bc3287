@@ -1,0 +1,56 @@
+---
+title: "Complete Text Object Reference for nvim-various-textobjs"
+sidebarTitle: "All Text Objects"
+description: "Full reference table for all 30+ text objects in nvim-various-textobjs: function name, default keymaps, inner/outer variants, and forward-seeking range."
+---
+
+This page is the complete reference for every text object bundled with `nvim-various-textobjs`. Each row shows the Lua function name, the default keymap(s), whether the object has inner/outer variants, and how far ahead the plugin will scan if the cursor is not already on the object (forward-seeking range).
+
+<Tip>
+  "Small" forward-seeking scans 5 lines ahead by default; "Big" scans 15 lines. Both values are configurable via `forwardLooking.small` and `forwardLooking.big` in the `setup()` options.
+</Tip>
+
+When the cursor is not sitting directly on a characterwise object, the plugin automatically seeks forward within the configured range. This is what makes single-key operations like `cL` (change next URL) or `c.` (change next emoji) work without navigating to the target first — just press the operator and let the plugin find the next occurrence.
+
+## Objects with Inner/Outer Variants
+
+These text objects accept `"inner"` or `"outer"` as an argument (or via `i`/`a` prefix keymaps) to control whether surrounding delimiters, whitespace, or punctuation are included in the selection.
+
+| Text Object | Function | Inner Keymap | Outer Keymap | Description | Forward-seeking |
+|---|---|---|---|---|---|
+| Indentation | `indentation(startBorder, endBorder)` | `ii`, `iI` | `ai`, `aI` | Surrounding lines with same or higher indentation | None |
+| Rest of Indentation | `restOfIndentation()` | — | — | Lines downward with same or higher indentation | None |
+| Greedy Indentation | `greedyOuterIndentation(scope)` | `ig` | `ag` | Outer indentation expanded to blank lines; useful for functions with annotations | None |
+| Subword | `subword(scope)` | `iS` | `aS` | Segment of a camelCase, snake_case, or kebab-case word; outer includes trailing/leading `_` or `-` | None |
+| Any Bracket | `anyBracket(scope)` | `io` | `ao` | Innermost `()`, `[]`, or `{}` pair on one line; outer includes the brackets | Small (5) |
+| Any Quote | `anyQuote(scope)` | `iq` | `aq` | Any unescaped `"`, `'`, or `` ` `` pair on one line; outer includes the quotation marks | Small (5) |
+| Value | `value(scope)` | `iv` | `av` | Right side of an assignment or key-value pair, excluding trailing comments; outer includes trailing `,` or `;` | Small (5) |
+| Key | `key(scope)` | `ik` | `ak` | Left side of an assignment or key-value pair; outer includes the `=` or `:` | Small (5) |
+| Number | `number(scope)` | `in` | `an` | Numeric value similar to `<C-a>`; inner is digits only, outer includes sign and decimal point | Small (5) |
+| File Path | `filepath(scope)` | `iF` | `aF` | UNIX file path (supports `~` and `$HOME`); inner is the filename only | Big (15) |
+| Chain Member | `chainMember(scope)` | `im` | `am` | Segment of a `.` or `:` connected chain such as `foo.bar`; outer includes one `.` or `:` | Small (5) |
+| Argument | `argument(scope)` | `i,` | `a,` | Comma-separated function argument; outer includes the `,` | Small (5) |
+| Color | `color(scope)` | `i#` | `a#` | HEX, CSS RGB/HSL, or ANSI color code; inner includes only the color value | Small (5) |
+| Double Brackets | `doubleSquareBrackets(scope)` | `iD` | `aD` | Text inside `[[...]]`; outer includes the four square brackets | Small (5) |
+| Line Characterwise | `lineCharacterwise(scope)` | `i_` | `a_` | Current line characterwise; outer includes leading indentation and trailing spaces | Small (5) |
+| Closed Fold | `closedFold(scope)` | `iz` | `az` | A closed fold; outer includes the line immediately after the fold | Big (15) |
+| Notebook Cell | `notebookCell(scope)` | `iN` | `aN` | Jupytext `# %%` delimited cell; outer includes the top cell border | None |
+
+## Objects without Inner/Outer
+
+These text objects have a single, unambiguous selection and do not accept an inner/outer scope. They are invoked with a single keymap in both operator-pending and visual mode.
+
+| Text Object | Function | Keymap | Description | Forward-seeking |
+|---|---|---|---|---|
+| To Next Closing Bracket | `toNextClosingBracket()` | `C` | From cursor to next `]`, `)`, or `}`, spanning multiple lines | Small (5) |
+| To Next Quotation Mark | `toNextQuotationMark()` | `Q` | From cursor to next unescaped `"`, `'`, or `` ` ``, spanning multiple lines | Small (5) |
+| Rest of Paragraph | `restOfParagraph()` | `r` | Linewise from cursor position to end of paragraph (like `}` but linewise) | None |
+| Entire Buffer | `entireBuffer()` | `gG` | The entire buffer content | None |
+| Near End of Line | `nearEoL()` | `n` | From cursor to end of line excluding the last character and trailing spaces; `{count}` excludes that many more characters | None |
+| Visible in Window | `visibleInWindow()` | `gw` | All lines currently visible in the window | None |
+| Rest of Window | `restOfWindow()` | `gW` | From the cursor line to the last line visible in the window | None |
+| URL | `url()` | `L` | Any protocol URL (e.g. `http`, `ftp`, custom protocols) | Big (15) |
+| Diagnostic | `diagnostic()` | `!` | Current or next LSP diagnostic underline | Unlimited |
+| Emoji | `emoji()` | `.` | A single emoji or Nerd Font glyph | Small (5) |
+| Column | `column(direction)` | `\|` | Blockwise column downward until a shorter line or indent change; accepts `{count}` and optional `direction` (`"down"`, `"up"`, `"both"`) | None |
+| Last Change | `lastChange()` | `g;` | The last non-deletion change, yank, or paste | None |

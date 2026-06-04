@@ -1,0 +1,94 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "nvim-various-textobjs",
+  "projectDescription": "A Neovim plugin that bundles more than 30 new text objects covering indentation, subwords, brackets, quotes, URLs, diagnostics, and more.",
+  "theme": "luma",
+  "primaryColor": "#0577cc",
+  "lightColor": "#044c9c",
+  "darkColor": "#040404",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "configuration"
+            ]
+          },
+          {
+            "group": "Text Objects",
+            "pages": [
+              "textobjects/indentation",
+              "textobjects/charwise",
+              "textobjects/linewise",
+              "textobjects/special"
+            ]
+          },
+          {
+            "group": "Advanced Usage",
+            "pages": [
+              "advanced/api",
+              "advanced/recipes",
+              "advanced/keymaps"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/all-textobjects",
+              "reference/limitations",
+              "reference/deprecated",
+              "reference/changelog"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "30+ new text objects for Neovim (indentation, subword, brackets, quotes, URL, diagnostics, emoji, color, and more)",
+    "Forward-seeking behavior: cursor doesn't need to sit on the object",
+    "Inner/outer variants for most text objects",
+    "Default keymaps with opt-in via setup(), or fully custom keybindings",
+    "Configurable forward-looking range, jumplist integration, and per-object settings",
+    "Lua API for building custom motions and commands on top of text objects",
+    "Blockwise column text object with direction and count support",
+    "Notebook cell text object for Jupytext-style files"
+  ],
+  "publicApiSurface": [
+    "require('various-textobjs').setup(config)",
+    "require('various-textobjs').indentation(startBorder, endBorder)",
+    "require('various-textobjs').restOfIndentation()",
+    "require('various-textobjs').greedyOuterIndentation(scope)",
+    "require('various-textobjs').subword(scope)",
+    "require('various-textobjs').anyBracket(scope)",
+    "require('various-textobjs').anyQuote(scope)",
+    "require('various-textobjs').toNextClosingBracket()",
+    "require('various-textobjs').toNextQuotationMark()",
+    "require('various-textobjs').value(scope)",
+    "require('various-textobjs').key(scope)",
+    "require('various-textobjs').number(scope)",
+    "require('various-textobjs').url()",
+    "require('various-textobjs').filepath(scope)",
+    "require('various-textobjs').chainMember(scope)",
+    "require('various-textobjs').argument(scope)",
+    "require('various-textobjs').color(scope)",
+    "require('various-textobjs').doubleSquareBrackets(scope)",
+    "require('various-textobjs').diagnostic()",
+    "require('various-textobjs').emoji()",
+    "require('various-textobjs').column(direction)",
+    "require('various-textobjs').closedFold(scope)",
+    "require('various-textobjs').entireBuffer()",
+    "require('various-textobjs').restOfParagraph()",
+    "require('various-textobjs').visibleInWindow()",
+    "require('various-textobjs').restOfWindow()",
+    "require('various-textobjs').nearEoL()",
+    "require('various-textobjs').lineCharacterwise(scope)",
+    "require('various-textobjs').notebookCell(scope)",
+    "require('various-textobjs').lastChange()"
+  ]
+}
