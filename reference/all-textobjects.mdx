@@ -19,7 +19,6 @@ These text objects accept `"inner"` or `"outer"` as an argument (or via `i`/`a` 
 | Text Object | Function | Inner Keymap | Outer Keymap | Description | Forward-seeking |
 |---|---|---|---|---|---|
 | Indentation | `indentation(startBorder, endBorder)` | `ii`, `iI` | `ai`, `aI` | Surrounding lines with same or higher indentation | None |
-| Rest of Indentation | `restOfIndentation()` | — | — | Lines downward with same or higher indentation | None |
 | Greedy Indentation | `greedyOuterIndentation(scope)` | `ig` | `ag` | Outer indentation expanded to blank lines; useful for functions with annotations | None |
 | Subword | `subword(scope)` | `iS` | `aS` | Segment of a camelCase, snake_case, or kebab-case word; outer includes trailing/leading `_` or `-` | None |
 | Any Bracket | `anyBracket(scope)` | `io` | `ao` | Innermost `()`, `[]`, or `{}` pair on one line; outer includes the brackets | Small (5) |
@@ -45,6 +44,7 @@ These text objects have a single, unambiguous selection and do not accept an inn
 | To Next Closing Bracket | `toNextClosingBracket()` | `C` | From cursor to next `]`, `)`, or `}`, spanning multiple lines | Small (5) |
 | To Next Quotation Mark | `toNextQuotationMark()` | `Q` | From cursor to next unescaped `"`, `'`, or `` ` ``, spanning multiple lines | Small (5) |
 | Rest of Paragraph | `restOfParagraph()` | `r` | Linewise from cursor position to end of paragraph (like `}` but linewise) | None |
+| Rest of Indentation | `restOfIndentation()` | `R` | Lines downward with same or higher indentation | None |
 | Entire Buffer | `entireBuffer()` | `gG` | The entire buffer content | None |
 | Near End of Line | `nearEoL()` | `n` | From cursor to end of line excluding the last character and trailing spaces; `{count}` excludes that many more characters | None |
 | Visible in Window | `visibleInWindow()` | `gw` | All lines currently visible in the window | None |

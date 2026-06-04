@@ -12,14 +12,14 @@ Neovim's built-in `gx` only opens a URL when the cursor is sitting on it. This v
 
 ```lua
 vim.keymap.set("n", "gx", function()
-  require("various-textobjs").url() -- select URL
+	require("various-textobjs").url() -- select URL
 
-  local foundURL = vim.fn.mode() == "v" -- only switches to visual mode when textobj found
-  if not foundURL then return end
+	local foundURL = vim.fn.mode() == "v" -- only switches to visual mode when textobj found
+	if not foundURL then return end
 
-  local url = vim.fn.getregion(vim.fn.getpos("."), vim.fn.getpos("v"), { type = "v" })[1]
-  vim.ui.open(url) -- requires nvim 0.10
-  vim.cmd.normal { "v", bang = true } -- leave visual mode
+	local url = vim.fn.getregion(vim.fn.getpos("."), vim.fn.getpos("v"), { type = "v" })[1]
+	vim.ui.open(url) -- requires nvim 0.10
+	vim.cmd.normal { "v", bang = true } -- leave visual mode
 end, { desc = "URL Opener" })
 ```
 
@@ -29,21 +29,25 @@ The same forward-seeking pattern applies to filepaths. This version of `gf` sele
 
 ```lua
 vim.keymap.set("n", "gf", function()
-  require("various-textobjs").filepath("outer") -- select filepath
+	require("various-textobjs").filepath("outer") -- select filepath
 
-  local foundPath = vim.fn.mode() == "v"
-  if not foundPath then return end
+	local foundPath = vim.fn.mode() == "v" -- only switches to visual mode when textobj found
+	if not foundPath then return end
 
-  local path = vim.fn.getregion(vim.fn.getpos("."), vim.fn.getpos("v"), { type = "v" })[1]
+	local path = vim.fn.getregion(vim.fn.getpos("."), vim.fn.getpos("v"), { type = "v" })[1]
 
-  local exists = vim.uv.fs_stat(vim.fs.normalize(path)) ~= nil
-  if exists then
-    vim.ui.open(path)
-  else
-    vim.notify("Path does not exist.", vim.log.levels.WARN)
-  end
-end, { desc = "Filepath Opener" })
+	local exists = vim.uv.fs_stat(vim.fs.normalize(path)) ~= nil
+	if exists then
+		vim.ui.open(path)
+	else
+		vim.notify("Path does not exist.", vim.log.levels.WARN)
+	end
+end, { desc = "URL Opener" })
 ```
+
+<Note>
+Both `gx` and `gf` use `vim.fn.getregion` to extract the selected text. This function requires Neovim 0.10 or later.
+</Note>
 
 ## `dsi` — Delete surrounding indentation
 
@@ -51,34 +55,34 @@ A common refactoring task is to remove a conditional or loop wrapper while keepi
 
 ```lua
 vim.keymap.set("n", "dsi", function()
-  -- select outer indentation
-  require("various-textobjs").indentation("outer", "outer")
+	-- select outer indentation
+	require("various-textobjs").indentation("outer", "outer")
 
-  -- plugin only switches to visual mode when a textobj has been found
-  local indentationFound = vim.fn.mode():find("V")
-  if not indentationFound then return end
+	-- plugin only switches to visual mode when a textobj has been found
+	local indentationFound = vim.fn.mode():find("V")
+	if not indentationFound then return end
 
-  -- dedent indentation
-  vim.cmd.normal { "<", bang = true }
+	-- dedent indentation
+	vim.cmd.normal { "<", bang = true }
 
-  -- delete surrounding lines
-  local endBorderLn = vim.api.nvim_buf_get_mark(0, ">")[1]
-  local startBorderLn = vim.api.nvim_buf_get_mark(0, "<")[1]
-  vim.cmd(tostring(endBorderLn) .. " delete") -- delete end first so line index is not shifted
-  vim.cmd(tostring(startBorderLn) .. " delete")
+	-- delete surrounding lines
+	local endBorderLn = vim.api.nvim_buf_get_mark(0, ">")[1]
+	local startBorderLn = vim.api.nvim_buf_get_mark(0, "<")[1]
+	vim.cmd(tostring(endBorderLn) .. " delete") -- delete end first so line index is not shifted
+	vim.cmd(tostring(startBorderLn) .. " delete")
 end, { desc = "Delete Surrounding Indentation" })
 ```
 
 For example, with the cursor on the `print` line:
 
 ```lua
--- before (cursor on print line)
+-- before
 if foo then
-  print("bar")
-  print("baz")
+	print("bar") -- <- cursor is on this line
+	print("baz")
 end
 
--- after dsi
+-- after
 print("bar")
 print("baz")
 ```
@@ -88,29 +92,32 @@ print("baz")
 Sometimes you need just the two border lines of an indented block — not the content itself. This command yanks them into the `+` register and briefly highlights them so you have visual confirmation. The cursor is restored to where it started, making the operation feel non-destructive.
 
 ```lua
--- NOTE this function uses vim.hl.range which requires nvim 0.11
+-- NOTE this function uses `vim.hl.range` requires nvim 0.11
 vim.keymap.set("n", "ysii", function()
-  local startPos = vim.api.nvim_win_get_cursor(0)
+	local startPos = vim.api.nvim_win_get_cursor(0)
 
-  require("various-textobjs").indentation("outer", "outer")
-  local indentationFound = vim.fn.mode():find("V")
-  if not indentationFound then return end
-  vim.cmd.normal { "V", bang = true } -- leave visual mode so '< '> marks are set
+	-- identify start- and end-border
+	require("various-textobjs").indentation("outer", "outer")
+	local indentationFound = vim.fn.mode():find("V")
+	if not indentationFound then return end
+	vim.cmd.normal { "V", bang = true } -- leave visual mode so the '< '> marks are set
 
-  local startLn = vim.api.nvim_buf_get_mark(0, "<")[1] - 1
-  local endLn = vim.api.nvim_buf_get_mark(0, ">")[1] - 1
-  local startLine = vim.api.nvim_buf_get_lines(0, startLn, startLn + 1, false)[1]
-  local endLine = vim.api.nvim_buf_get_lines(0, endLn, endLn + 1, false)[1]
-  vim.fn.setreg("+", startLine .. "\n" .. endLine .. "\n")
+	-- copy them into the + register
+	local startLn = vim.api.nvim_buf_get_mark(0, "<")[1] - 1
+	local endLn = vim.api.nvim_buf_get_mark(0, ">")[1] - 1
+	local startLine = vim.api.nvim_buf_get_lines(0, startLn, startLn + 1, false)[1]
+	local endLine = vim.api.nvim_buf_get_lines(0, endLn, endLn + 1, false)[1]
+	vim.fn.setreg("+", startLine .. "\n" .. endLine .. "\n")
 
-  -- highlight yanked text
-  local dur = 1500
-  local ns = vim.api.nvim_create_namespace("ysii")
-  local bufnr = vim.api.nvim_get_current_buf()
-  vim.hl.range(bufnr, ns, "IncSearch", { startLn, 0 }, { startLn, -1 }, { timeout = dur })
-  vim.hl.range(bufnr, ns, "IncSearch", { endLn, 0 }, { endLn, -1 }, { timeout = dur })
+	-- highlight yanked text
+	local dur = 1500
+	local ns = vim.api.nvim_create_namespace("ysii")
+	local bufnr = vim.api.nvim_get_current_buf()
+	vim.hl.range(bufnr, ns, "IncSearch", { startLn, 0 }, { startLn, -1 }, { timeout = dur })
+	vim.hl.range(bufnr, ns, "IncSearch", { endLn, 0 }, { endLn, -1 }, { timeout = dur })
 
-  vim.api.nvim_win_set_cursor(0, startPos)
+	-- restore cursor position
+	vim.api.nvim_win_set_cursor(0, startPos)
 end, { desc = "Yank surrounding indentation" })
 ```
 
@@ -120,10 +127,10 @@ In indentation-sensitive languages like Python, pasting code often results in in
 
 ```lua
 vim.keymap.set("n", "P", function()
-  require("various-textobjs").lastChange()
-  local changeFound = vim.fn.mode():find("v")
-  if changeFound then vim.cmd.normal { ">", bang = true } end
-end)
+	require("various-textobjs").lastChange()
+	local changeFound = vim.fn.mode():find("v")
+	if changeFound then vim.cmd.normal { ">", bang = true } end
+end
 ```
 
 ## `ii` / `entireBuffer` hybrid
@@ -131,12 +138,13 @@ end)
 When `ii` (inner indentation) is invoked on a line with zero indentation, the plugin warns that no indented block was found. This hybrid replaces that warning with a fallback to `entireBuffer`, selecting the whole file instead — useful if you treat `ii` as a general "select the current block" command.
 
 ```lua
+-- when on unindented line, `ii` should select entire buffer
 vim.keymap.set("o", "ii", function()
-  if vim.fn.indent(".") == 0 then
-    require("various-textobjs").entireBuffer()
-  else
-    require("various-textobjs").indentation("inner", "inner")
-  end
+	if vim.fn.indent(".") == 0 then
+		require("various-textobjs").entireBuffer()
+	else
+		require("various-textobjs").indentation("inner", "inner")
+	end
 end)
 ```
 
@@ -146,11 +154,11 @@ Because text objects switch to visual mode when they find a match, you can immed
 
 ```lua
 local function gotoNextInnerNumber()
-  require("various-textobjs").number("inner")
-  local mode = vim.fn.mode()
-  if mode:find("[Vv]") then
-    vim.cmd.normal { mode, bang = true } -- leaves visual mode
-  end
+	require("various-textobjs").number("inner")
+	local mode = vim.fn.mode()
+	if mode:find("[Vv]") then -- only switches to visual when textobj found
+		vim.cmd.normal { mode, bang = true } -- leaves visual mode
+	end
 end
 ```
 

@@ -155,6 +155,10 @@ Selects a numeric literal, similar to what `<C-a>` / `<C-x>` would act on.
 - **Inner** — digits only (`42`, `007`)
 - **Outer** — includes a leading `-` sign, decimal point, and uses `_` as a thousand separator (`-3.14`, `1_000_000`)
 
+<Note>
+  The default keymap `in` overrides Vim's built-in `in` operator-pending motion ("inside next …"). If you rely on that built-in, map `number` to a different key.
+</Note>
+
 ```lua
 vim.keymap.set({ "o", "x" }, "in", '<cmd>lua require("various-textobjs").number("inner")<CR>')
 vim.keymap.set({ "o", "x" }, "an", '<cmd>lua require("various-textobjs").number("outer")<CR>')

@@ -129,9 +129,20 @@ vim.keymap.set({ "o", "x" }, "H", function()
   }
   return "<cmd>lua require('various-textobjs').url()<CR>"
 end, { expr = true, desc = "http-url textobj" })
+
+vim.keymap.set({ "o", "x" }, "F", function()
+  require("various-textobjs").setup {
+    textobjs = {
+      url = {
+        patterns = { [[ftp://[^%s)%]}"'`>]+]] },
+      },
+    },
+  }
+  return "<cmd>lua require('various-textobjs').url()<CR>"
+end, { expr = true, desc = "ftp-url textobj" })
 ```
 
-The keymap is set with `expr = true` so the function return value (the Ex command string) is executed as the keymap RHS, which preserves dot-repeat. The `setup()` call runs first and narrows the URL pattern to HTTP/HTTPS only; the subsequent `url()` call then uses that updated pattern.
+Each keymap is set with `expr = true` so the function return value (the Ex command string) is executed as the keymap RHS, which preserves dot-repeat. The `setup()` call runs first and narrows the URL pattern to the desired protocol only; the subsequent `url()` call then uses that updated pattern.
 
 <Note>
   Each `setup()` call deep-merges with the existing config, so you only need to specify the keys you want to change. All other options remain at their current values — either the defaults or whatever you set during plugin initialization.

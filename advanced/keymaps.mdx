@@ -54,6 +54,11 @@ vim.keymap.set(
 )
 vim.keymap.set(
   { "o", "x" },
+  "iI",
+  '<cmd>lua require("various-textobjs").indentation("inner", "inner")<CR>'
+)
+vim.keymap.set(
+  { "o", "x" },
   "ai",
   '<cmd>lua require("various-textobjs").indentation("outer", "inner")<CR>'
 )
@@ -64,7 +69,7 @@ vim.keymap.set(
 )
 ```
 
-The default mappings also include `iI` as an alias for `ii` (inner-inner), matching the behaviour of [vim-indent-object](https://github.com/michaeljsmith/vim-indent-object).
+The default mappings include both `ii` and `iI` for inner-inner indentation, matching the behaviour of [vim-indent-object](https://github.com/michaeljsmith/vim-indent-object).
 
 ## Column text object (direction parameter)
 
